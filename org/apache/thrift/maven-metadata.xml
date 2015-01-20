@@ -3,11 +3,10 @@
   <groupId>org.apache</groupId>
   <artifactId>thrift</artifactId>
   <versioning>
-    <release>10.12.14</release>
+    <release>20.01.15</release>
     <versions>
-      <version>17.11.14</version>
-      <version>10.12.14</version>
+      <version>20.01.15</version>
     </versions>
-    <lastUpdated>20141210133712</lastUpdated>
+    <lastUpdated>20150120092115</lastUpdated>
   </versioning>
 </metadata>
