@@ -57,7 +57,23 @@ public interface TBase<T extends TBase<T,F>, F extends TFieldIdEnum> extends Com
    */
   public void setFieldValue(F field, Object value);
 
+  /**
+   * Create new object and copy fields from this
+   * @return
+   */
   public T deepCopy();
+  
+  /**
+   * Copy fields from 'from' to this
+   * @param other
+   */
+  public void deepCopyFields(T from);
+  
+  /**
+   * Create new object of type T with default constructor
+   * @return
+   */
+  public T newInstance();
 
   /**
    * Return to the state of having just been initialized, as though you had just

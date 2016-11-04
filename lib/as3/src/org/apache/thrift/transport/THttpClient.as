@@ -18,117 +18,100 @@
  */
 
 package org.apache.thrift.transport {
+	import flash.errors.EOFError;
+	import flash.events.Event;
+	import flash.events.IOErrorEvent;
+	import flash.events.SecurityErrorEvent;
+	import flash.net.URLLoader;
+	import flash.net.URLLoaderDataFormat;
+	import flash.net.URLRequest;
+	import flash.net.URLRequestMethod;
+	import flash.utils.ByteArray;
 
-  import flash.errors.EOFError;
-  import flash.events.Event;
-  import flash.events.IOErrorEvent;
-  import flash.events.SecurityErrorEvent;
-  import flash.net.URLLoader;
-  import flash.net.URLLoaderDataFormat;
-  import flash.net.URLRequest;
-  import flash.net.URLRequestMethod;
-  import flash.system.Capabilities;
-  import flash.utils.ByteArray;
-  
-  /**
-   * HTTP implementation of the TTransport interface. Used for working with a
-   * Thrift web services implementation.
-   */
-  public class THttpClient extends TTransport {
+	/**
+	 * HTTP implementation of the TTransport interface. Used for working with a
+	 * Thrift web services implementation.
+	 */
+	public class THttpClient extends TTransport {
 
-    private var request_:URLRequest = null;
-    private var requestBuffer_:ByteArray = new ByteArray();
-    private var responseBuffer_:ByteArray = null;
-    private var traceBuffers_:Boolean = Capabilities.isDebugger;
+		private var request_ : URLRequest = null;
+		private var requestBuffer_ : ByteArray = new ByteArray();
+		private var responseBuffer_ : ByteArray = null;
 
-    
-    public function getBuffer():ByteArray {
-      return requestBuffer_;
-    }
-    
-    public function THttpClient(request:URLRequest, traceBuffers:Boolean=true):void {
-      request.contentType = "application/x-thrift";
-      request_ = request;
-      if(traceBuffers == false) {
-        traceBuffers_ = traceBuffers;
-      }
-    }
-    
-    public override function open():void {
-    }
+		public function getBuffer() : ByteArray {
+			return requestBuffer_;
+		}
 
-    public override function close():void {
-    }
+		public function THttpClient(request : URLRequest) : void {
+			request_ = request;
+		}
+
+		public override function open() : void {
+		}
+
+		public override function close() : void {
+		}
+
+		public override function isOpen() : Boolean {
+			return true;
+		}
+
+		public override function read(buf : ByteArray, off : int, len : int) : int {
+			if (responseBuffer_ == null) {
+				throw new TTransportError(TTransportError.UNKNOWN, "Response buffer is empty, no request.");
+			}
+			try {
+				responseBuffer_.readBytes(buf, off, len);
+				return len;
+			}
+			catch (e : EOFError) {
+				throw new TTransportError(TTransportError.UNKNOWN, "No more data available.");
+			}
+			return 0;
+		}
+
+		public override function write(buf : ByteArray, off : int, len : int) : void {
+			requestBuffer_.writeBytes(buf, off, len);
+		}
+
+		public override function flush(seqId:int,callback : Function = null) : void {
+			var loader : URLLoader = new URLLoader();
+			
+      
+			if (callback != null) {
+				loader.addEventListener(Event.COMPLETE, function(event : Event):void {
+        
+					responseBuffer_ = URLLoader(event.target).data;
  
-    public override function isOpen():Boolean {
-      return true;
-    }
-    
-    public override function read(buf:ByteArray, off:int, len:int):int {
-      if (responseBuffer_ == null) {
-        throw new TTransportError(TTransportError.UNKNOWN, "Response buffer is empty, no request.");
-      }
-        try {
-            responseBuffer_.readBytes(buf, off, len);
-            if (traceBuffers_) {
-              dumpBuffer(buf, "READ");
-            }
-            return len;
-          }
-          catch (e:EOFError) {
-            if (traceBuffers_) {
-              dumpBuffer(requestBuffer_, "FAILED-RESPONSE-REQUEST");
-              dumpBuffer(responseBuffer_, "FAILED-RESPONSE");
-            }
-            throw new TTransportError(TTransportError.UNKNOWN, "No more data available.");
-        }
-        return 0;
-    }
+					try {
+						callback();
+					}catch (e:Error){
+						dispatchEvent(new THttpClientEvent(e.name, e));
+					}
+					responseBuffer_ = null;
+				}); 
+			}
+			loader.addEventListener(IOErrorEvent.IO_ERROR, onIOError, false, 0, true);
+			loader.addEventListener(IOErrorEvent.NETWORK_ERROR, onNetworkError, false, 0, true);
+			loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, onSecurityError, false, 0, true);
+			request_.method = URLRequestMethod.POST;
+			loader.dataFormat = URLLoaderDataFormat.BINARY;
+			requestBuffer_.position = 0;
+			request_.data = requestBuffer_;
+			loader.load(request_);
+		}
+		
+		private function onSecurityError(event : SecurityErrorEvent) : void {
+			dispatchEvent(event.clone());
+		}
 
-    public override function write(buf:ByteArray, off:int, len:int):void {
-      requestBuffer_.writeBytes(buf, off, len);
-    }
-
-    public override function flush(callback:Function=null):void {
-      var loader:URLLoader = new URLLoader();
-      if (callback != null) {
-        loader.addEventListener(Event.COMPLETE, function(event:Event):void {
-         responseBuffer_ = URLLoader(event.target).data;
-         if (traceBuffers_) {
-           dumpBuffer(responseBuffer_, "RESPONSE_BUFFER");
-         }
-         callback(null);
-         responseBuffer_ = null;
-        });
-        loader.addEventListener(IOErrorEvent.IO_ERROR, function(event:IOErrorEvent):void {
-          callback(new TTransportError(TTransportError.UNKNOWN, "IOError: " + event.text));
-          responseBuffer_ = null;
-        });
-        loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, function(event:SecurityErrorEvent):void {
-          callback(new TTransportError(TTransportError.UNKNOWN, "SecurityError: " + event.text));
-          responseBuffer_ = null;
-        });
-      }
-      request_.method = URLRequestMethod.POST;
-      loader.dataFormat = URLLoaderDataFormat.BINARY;
-      requestBuffer_.position = 0;
-      request_.data = requestBuffer_;
-      loader.load(request_);
-    }
-
-    private function dumpBuffer(buf:ByteArray, prefix:String):String {
-      var debugString : String = prefix + " BUFFER ";
-      if (buf != null) {
-        debugString += "length: " + buf.length + ", ";
-        for (var i : int = 0; i < buf.length; i++) {
-          debugString += "[" + buf[i].toString(16) + "]";
-        }
-      } else {
-        debugString = "null";
-      }
-      trace(debugString);
-      return debugString;
-    }
-
-  }
+		private function onIOError(event : IOErrorEvent) : void {
+			dispatchEvent(event.clone());
+		} 
+		
+		private function onNetworkError(event : IOErrorEvent) : void {
+			dispatchEvent(event.clone());
+		}
+		
+	}
 }

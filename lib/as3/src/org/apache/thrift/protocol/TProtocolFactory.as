@@ -18,8 +18,7 @@
  */
 
 package org.apache.thrift.protocol {
-
-  import org.apache.thrift.transport.TTransport;
+	import org.apache.thrift.transport.TTransport;
   
   public interface TProtocolFactory {
      function getProtocol(trans:TTransport):TProtocol;

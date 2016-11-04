@@ -275,6 +275,26 @@ public:
   static const t_type* get_true_type(const t_type* type) { return type->get_true_type(); }
   static t_type* get_true_type(t_type* type) { return type->get_true_type(); }
 
+  bool type_is_numeric(t_type* type) {
+    t_type* ttype = get_true_type(type);
+
+    if (!ttype->is_base_type())
+      return false;
+
+    t_base_type::t_base base = ((t_base_type*)ttype)->get_base();
+    switch (base) {
+    case t_base_type::TYPE_I8:
+    case t_base_type::TYPE_I16:
+    case t_base_type::TYPE_I32:
+    case t_base_type::TYPE_I64:
+    case t_base_type::TYPE_DOUBLE:
+      return true;
+    default:
+      return false;
+    }
+    return false;
+  }
+
 protected:
   /**
    * The program being generated

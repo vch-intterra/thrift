@@ -24,13 +24,18 @@ package org.apache.thrift.protocol {
 
   import flash.utils.ByteArray;
   
-  /**
-   * Protocol interface definition
+  /** Protocol interface definition
    */
   public interface TProtocol {
   
+    /**
+     * Prevent direct instantiation
+     */
     function TProtocol(trans:TTransport);
-
+   
+    /**
+     * Transport accessor
+     */
     function getTransport():TTransport;
 
     /**
