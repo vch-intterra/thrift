@@ -56,6 +56,7 @@ public:
     std::map<std::string, std::string>::const_iterator iter;
 
     gen_node_ = false;
+    gen_ws_ = false;
     gen_jquery_ = false;
     gen_ts_ = false;
     gen_es6_ = false;
@@ -65,6 +66,8 @@ public:
     for( iter = parsed_options.begin(); iter != parsed_options.end(); ++iter) {
       if( iter->first.compare("node") == 0) {
         gen_node_ = true;
+      } else if( iter->first.compare("ws") == 0) {
+    	gen_ws_ = true;
       } else if( iter->first.compare("jquery") == 0) {
         gen_jquery_ = true;
       } else if( iter->first.compare("ts") == 0) {
@@ -87,8 +90,11 @@ public:
     }
 
     if (gen_node_ && gen_jquery_) {
-      throw "Invalid switch: [-gen js:node,jquery] options not compatible, try: [-gen js:node -gen "
-            "js:jquery]";
+      throw "Invalid switch: [-gen js:node,jquery] options not compatible, try: [-gen js:node -gen js:jquery]";
+    }
+
+    if (gen_ws_ && (gen_node_ || gen_jquery_)) {
+      throw "Invalid switch: [-gen js:node,jquery,ws] options not compatible, try: [-gen js:node -gen js:jquery -gen js:ws]";
     }
 
     if (!gen_node_ && with_ns_) {
@@ -343,6 +349,11 @@ private:
    * The name of the defined module(s), for TypeScript Definition Files.
    */
   string ts_module_;
+
+  /**
+   * True if we should generate services that use Websocket async transport
+   */
+  bool gen_ws_;
 
   /**
    * True if we should not generate namespace objects for node.
@@ -1071,10 +1082,10 @@ void t_js_generator::generate_service_processor(t_service* tservice) {
              << "  var x = new "
                 "Thrift.TApplicationException(Thrift.TApplicationExceptionType.UNKNOWN_METHOD, "
                 "'Unknown function ' + r.fname);" << endl << indent()
-             << "  output.writeMessageBegin(r.fname, Thrift.MessageType.EXCEPTION, r.rseqid);"
-             << endl << indent() << "  x.write(output);" << endl << indent()
-             << "  output.writeMessageEnd();" << endl << indent() << "  output.flush();" << endl
-             << indent() << "}" << endl;
+             << "  output.writeMessageBegin('" << tservice->get_name()
+             << ":' + r.fname, Thrift.MessageType.EXCEPTION, r.rseqid);" << endl << indent()
+             << "  x.write(output);" << endl << indent() << "  output.writeMessageEnd();" << endl
+             << indent() << "  output.flush();" << endl << indent() << "}" << endl;
 
   scope_down(f_service_);
   f_service_ << ";" << endl;
@@ -1143,7 +1154,7 @@ void t_js_generator::generate_process_function(t_service* tservice, t_function* 
   indent(f_service_) << ".then(function(result) {" << endl;
   indent_up();
   f_service_ << indent() << "var result_obj = new " << resultname << "({success: result});" << endl
-             << indent() << "output.writeMessageBegin(\"" << tfunction->get_name()
+             << indent() << "output.writeMessageBegin(\"" << tservice->get_name() << ":" << tfunction->get_name()
              << "\", Thrift.MessageType.REPLY, seqid);" << endl << indent()
              << "result_obj.write(output);" << endl << indent() << "output.writeMessageEnd();" << endl
              << indent() << "output.flush();" << endl;
@@ -1175,7 +1186,7 @@ void t_js_generator::generate_process_function(t_service* tservice, t_function* 
     f_service_ << ") {" << endl;
     indent_up();
     f_service_ << indent() << "result = new " << resultname << "(err);" << endl << indent()
-               << "output.writeMessageBegin(\"" << tfunction->get_name()
+               << "output.writeMessageBegin(\"" << tservice->get_name() << ":" << tfunction->get_name()
                << "\", Thrift.MessageType.REPLY, seqid);" << endl;
 
     indent_down();
@@ -1186,7 +1197,7 @@ void t_js_generator::generate_process_function(t_service* tservice, t_function* 
   f_service_ << indent() << "result = new "
                             "Thrift.TApplicationException(Thrift.TApplicationExceptionType.UNKNOWN,"
                             " err.message);" << endl << indent() << "output.writeMessageBegin(\""
-             << tfunction->get_name() << "\", Thrift.MessageType.EXCEPTION, seqid);" << endl;
+             << tservice->get_name() << ":" << tfunction->get_name() << "\", Thrift.MessageType.EXCEPTION, seqid);" << endl;
 
   if (has_exception) {
     indent_down();
@@ -1225,7 +1236,7 @@ void t_js_generator::generate_process_function(t_service* tservice, t_function* 
   indent_up();
   f_service_ << indent() << "result_obj = new " << resultname
              << "((err !== null || typeof err === 'undefined') ? err : {success: result});" << endl << indent()
-             << "output.writeMessageBegin(\"" << tfunction->get_name()
+             << "output.writeMessageBegin(\"" << tservice->get_name() << ":" << tfunction->get_name()
              << "\", Thrift.MessageType.REPLY, seqid);" << endl;
   indent_down();
   indent(f_service_) << "} else {" << endl;
@@ -1233,7 +1244,7 @@ void t_js_generator::generate_process_function(t_service* tservice, t_function* 
   f_service_ << indent() << "result_obj = new "
                             "Thrift.TApplicationException(Thrift.TApplicationExceptionType.UNKNOWN,"
                             " err.message);" << endl << indent() << "output.writeMessageBegin(\""
-             << tfunction->get_name() << "\", Thrift.MessageType.EXCEPTION, seqid);" << endl;
+             << tservice->get_name() << ":" << tfunction->get_name() << "\", Thrift.MessageType.EXCEPTION, seqid);" << endl;
   indent_down();
   f_service_ << indent() << "}" << endl << indent() << "result_obj.write(output);" << endl << indent()
              << "output.writeMessageEnd();" << endl << indent() << "output.flush();" << endl;
@@ -1490,6 +1501,9 @@ void t_js_generator::generate_service_client(t_service* tservice) {
       indent_down();
       indent_down();
       f_service_ << indent() << "}" << endl;
+    } else if (gen_ws_) {
+      f_service_ << indent() << "this.send_" << funname << "(" << arglist
+                 << (arglist.empty() ? "" : ", ") << "callback); " << endl;
     } else { // Standard JavaScript ./gen-js
       f_service_ << indent() << "this.send_" << funname << "(" << arglist
                  << (arglist.empty() ? "" : ", ") << "callback); " << endl;
@@ -1518,6 +1532,13 @@ void t_js_generator::generate_service_client(t_service* tservice) {
     if (gen_node_) {
       f_service_ << indent() << "var output = new this.pClass(this.output);" << endl;
       outputVar = "output";
+    }
+    if (gen_ws_) {
+      f_service_ << indent() << "var seqId = Thrift.AsyncManager.getInstance().getNextSeqId();"
+                 << endl;
+      f_service_ << indent() << "var outTransport = new Thrift.TMemoryOutputTransport();" << endl;
+      f_service_ << indent() << "var outProtocol = new Thrift.Protocol(outTransport);" << endl;
+      outputVar = "outProtocol";
     } else {
       outputVar = "this.output";
     }
@@ -1530,11 +1551,14 @@ void t_js_generator::generate_service_client(t_service* tservice) {
 
     // Serialize the request header
     if (gen_node_) {
-      f_service_ << indent() << outputVar << ".writeMessageBegin('" << (*f_iter)->get_name()
-                 << "', " << messageType << ", this.seqid());" << endl;
+      f_service_ << indent() << outputVar << ".writeMessageBegin('" << tservice->get_name() << ":"
+                 << (*f_iter)->get_name() << "', " << messageType << ", this.seqid());" << endl;
+    } else if (gen_ws_) {
+      f_service_ << indent() << outputVar << ".writeMessageBegin('" << tservice->get_name() << ":"
+                 << (*f_iter)->get_name() << "', " << messageType << ", seqId);" << endl;
     } else {
-      f_service_ << indent() << outputVar << ".writeMessageBegin('" << (*f_iter)->get_name()
-                 << "', " << messageType << ", this.seqid);" << endl;
+      f_service_ << indent() << outputVar << ".writeMessageBegin('" << tservice->get_name() << ":"
+                 << (*f_iter)->get_name() << "', " << messageType << ", this.seqid);" << endl;
     }
 
     if (fields.size() > 0){
@@ -1559,6 +1583,37 @@ void t_js_generator::generate_service_client(t_service* tservice) {
 
     if (gen_node_) {
       f_service_ << indent() << "return this.output.flush();" << endl;
+    } else if (gen_ws_) {
+      f_service_ << indent() << "var packet = outTransport.getPayload();" << endl;
+      f_service_ << indent() << "var self = this;" << endl;
+      f_service_ << indent() << "if (callback) {" << endl;
+      indent_up();
+      f_service_ << indent()
+                 << "Thrift.AsyncManager.getInstance().put(seqId, function (responsePacket) {"
+                 << endl;
+      indent_up();
+      f_service_ << indent()
+                 << "var inputTransport = new Thrift.TMemoryInputTransport(responsePacket);"
+                 << endl;
+      f_service_ << indent() << "var inputProtocol = new Thrift.Protocol(inputTransport);" << endl;
+      f_service_ << indent() << "var result = null;" << endl;
+      f_service_ << indent() << "var error = null;" << endl;      
+      f_service_ << indent() << "try {" << endl;
+      indent_up();
+      f_service_ << indent() << "result = self.recv_" << (*f_iter)->get_name() << "(inputProtocol);" << endl;
+      indent_down();
+      f_service_ << indent() << "} catch (e) {" << endl;
+      indent_up();
+      f_service_ << indent() << "error = e;" << endl;
+      indent_down();
+      f_service_ << indent() << "}" << endl;
+      f_service_ << indent() << "callback(error, result);" << endl;
+      indent_down();
+      f_service_ << indent() << "});" << endl;
+      indent_down();
+      f_service_ << indent() << "}" << endl;
+      f_service_ << indent() << "this.output.getTransport().write(packet);" << endl;
+      f_service_ << indent() << "this.output.getTransport().flush();" << endl;
     } else {
       if (gen_jquery_) {
         f_service_ << indent() << "return this.output.getTransport().flush(callback);" << endl;
@@ -1616,6 +1671,11 @@ void t_js_generator::generate_service_client(t_service* tservice) {
         f_service_ << endl << js_namespace(tservice->get_program()) << service_name_
                    << "Client.prototype.recv_" << (*f_iter)->get_name()
                    << " = function(input,mtype,rseqid) {" << endl;
+      } else if (gen_ws_) {
+        f_service_ << endl << js_namespace(tservice->get_program()) << service_name_
+                   << "Client.prototype.recv_" << (*f_iter)->get_name()
+                   << " = function(inputProtocol) {" << endl;
+
       } else {
         t_struct noargs(program_);
 
@@ -1632,6 +1692,8 @@ void t_js_generator::generate_service_client(t_service* tservice) {
       std::string inputVar;
       if (gen_node_) {
         inputVar = "input";
+      } else if (gen_ws_) {
+        inputVar = "inputProtocol";
       } else {
         inputVar = "this.input";
       }
@@ -1640,9 +1702,10 @@ void t_js_generator::generate_service_client(t_service* tservice) {
         f_service_ << indent() << "var callback = this._reqs[rseqid] || function() {};" << endl
                    << indent() << "delete this._reqs[rseqid];" << endl;
       } else {
-        f_service_ << indent() << "var ret = this.input.readMessageBegin();" << endl << indent()
-                   << "var fname = ret.fname;" << endl << indent() << "var mtype = ret.mtype;"
-                   << endl << indent() << "var rseqid = ret.rseqid;" << endl;
+        f_service_ << indent() << "var ret = " << inputVar << ".readMessageBegin();" << endl
+                   << indent() << "var fname = ret.fname;" << endl << indent()
+                   << "var mtype = ret.mtype;" << endl << indent() << "var rseqid = ret.rseqid;"
+                   << endl;
       }
 
       f_service_ << indent() << "if (mtype == Thrift.MessageType.EXCEPTION) {" << endl << indent()
@@ -2361,5 +2424,6 @@ THRIFT_REGISTER_GENERATOR(js,
                           "    jquery:          Generate jQuery compatible code.\n"
                           "    node:            Generate node.js compatible code.\n"
                           "    ts:              Generate TypeScript definition files.\n"
+                          "    ws:              Generate async Websocket compatible code.\n"
                           "    with_ns:         Create global namespace objects when using node.js\n"
                           "    es6:             Create ES6 code with Promises\n")

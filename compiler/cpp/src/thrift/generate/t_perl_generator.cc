@@ -1102,7 +1102,7 @@ void t_perl_generator::generate_service_client(t_service* tservice) {
                            + (*f_iter)->get_name() + "_args";
 
     // Serialize the request header
-    f_service_ << indent() << "$self->{output}->writeMessageBegin('" << (*f_iter)->get_name()
+    f_service_ << indent() << "$self->{output}->writeMessageBegin('" << service_name_ << ":" << (*f_iter)->get_name()
                << "', " << ((*f_iter)->is_oneway() ? "Thrift::TMessageType::ONEWAY" : "Thrift::TMessageType::CALL")
                << ", $self->{seqid});" << endl;
 

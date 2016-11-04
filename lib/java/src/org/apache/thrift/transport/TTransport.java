@@ -126,6 +126,11 @@ public abstract class TTransport implements Closeable {
   public void flush()
     throws TTransportException {}
 
+  public void flush(int seqId) throws TTransportException {
+    flush();
+  }
+
+
   /**
    * Access the protocol's underlying buffer directly. If this is not a
    * buffered transport, return null.

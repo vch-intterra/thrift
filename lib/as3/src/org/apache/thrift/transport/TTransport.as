@@ -18,11 +18,12 @@
  */
 
 package org.apache.thrift.transport {
-  
-  import flash.utils.ByteArray;
-  import org.apache.thrift.AbstractMethodError;
-  
-  public class TTransport {
+	import flash.events.EventDispatcher;
+	import flash.utils.ByteArray;
+	
+	import org.apache.thrift.AbstractMethodError;
+
+	public class TTransport extends EventDispatcher{
 
     /**
      * Queries whether the transport is open.
@@ -84,6 +85,7 @@ package org.apache.thrift.transport {
       var got:int = 0;
         var ret:int = 0;
         while (got < len) {
+			
             ret = read(buf, off+got, len-got);
             if (ret <= 0) {
               throw new TTransportError(TTransportError.UNKNOWN, "Cannot read. Remote side has closed. Tried to read " + len + " bytes, but only got " + got + " bytes.");
@@ -120,7 +122,7 @@ package org.apache.thrift.transport {
      *
      * @throws TTransportException if there was an error writing out data.
      */
-    public function flush(callback:Function=null):void {
+    public function flush(seqId:int,callback:Function=null):void {
       throw new AbstractMethodError();
     }
   }

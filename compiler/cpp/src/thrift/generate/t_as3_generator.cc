@@ -185,6 +185,7 @@ public:
   std::string as3_thrift_imports();
   std::string as3_thrift_gen_imports(t_struct* tstruct, string& imports);
   std::string as3_thrift_gen_imports(t_service* tservice);
+  std::string as3_thrift_gen_extends_imports(t_service* tservice, string suff);
   std::string type_name(t_type* ttype, bool in_container = false, bool in_init = false);
   std::string base_type_name(t_base_type* tbase, bool in_container = false);
   std::string declare_field(t_field* tfield, bool init = false);
@@ -270,7 +271,7 @@ string t_as3_generator::as3_type_imports() {
  */
 string t_as3_generator::as3_thrift_imports() {
   return string() + "import org.apache.thrift.*;\n" + "import org.apache.thrift.meta_data.*;\n"
-         + "import org.apache.thrift.protocol.*;\n\n";
+         + "import org.apache.thrift.protocol.*;\n" + "import org.apache.thrift.StaticSeq;\n\n";
 }
 
 /**
@@ -283,14 +284,16 @@ string t_as3_generator::as3_thrift_gen_imports(t_struct* tstruct, string& import
   const vector<t_field*>& members = tstruct->get_members();
   vector<t_field*>::const_iterator m_iter;
 
-  // For each type check if it is from a differnet namespace
   for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
-    t_program* program = (*m_iter)->get_type()->get_program();
+    t_type* type = (*m_iter)->get_type();
+    if (type->is_list())
+      type = ((t_list*)type)->get_elem_type();
+    t_program* program = type->get_program();
     if (program != NULL && program != program_) {
       string package = program->get_namespace("as3");
       if (!package.empty()) {
-        if (imports.find(package + "." + (*m_iter)->get_type()->get_name()) == string::npos) {
-          imports.append("import " + package + "." + (*m_iter)->get_type()->get_name() + ";\n");
+        if (imports.find(package + "." + type->get_name()) == string::npos) {
+          imports.append("import " + package + "." + type->get_name() + ";\n");
         }
       }
     }
@@ -310,13 +313,16 @@ string t_as3_generator::as3_thrift_gen_imports(t_service* tservice) {
 
   // For each type check if it is from a differnet namespace
   for (f_iter = functions.begin(); f_iter != functions.end(); ++f_iter) {
-    t_program* program = (*f_iter)->get_returntype()->get_program();
+    t_type* type = (*f_iter)->get_returntype();
+    if (type->is_list())
+      type = ((t_list*)type)->get_elem_type();
+
+    t_program* program = type->get_program();
     if (program != NULL && program != program_) {
       string package = program->get_namespace("as3");
       if (!package.empty()) {
-        if (imports.find(package + "." + (*f_iter)->get_returntype()->get_name()) == string::npos) {
-          imports.append("import " + package + "." + (*f_iter)->get_returntype()->get_name()
-                         + ";\n");
+        if (imports.find(package + "." + type->get_name()) == string::npos) {
+          imports.append("import " + package + "." + type->get_name() + ";\n");
         }
       }
     }
@@ -326,6 +332,21 @@ string t_as3_generator::as3_thrift_gen_imports(t_service* tservice) {
   }
 
   return imports;
+}
+
+string t_as3_generator::as3_thrift_gen_extends_imports(t_service* tservice, string suff) {
+  t_type* ttype = tservice->get_extends();
+  t_program* program = NULL;
+  if (ttype != NULL)
+    program = ttype->get_program();
+  if (program != NULL && program != program_) {
+    string package = program->get_namespace("as3");
+    if (!package.empty()) {
+      return string() + "import " + package + "." + ttype->get_name() + suff + ";\n\n";
+    }
+  }
+
+  return string();
 }
 
 /**
@@ -588,7 +609,7 @@ string t_as3_generator::render_const_value(ofstream& out,
       render << "(byte)" << value->get_integer();
       break;
     case t_base_type::TYPE_I16:
-      render << "(short)" << value->get_integer();
+      render << value->get_integer();
       break;
     case t_base_type::TYPE_I32:
       render << value->get_integer();
@@ -718,8 +739,15 @@ void t_as3_generator::generate_as3_struct_definition(ofstream& out,
 
   for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
     generate_as3_doc(out, *m_iter);
-    indent(out) << "private var _" << (*m_iter)->get_name() + ":" + type_name((*m_iter)->get_type())
-                << ";" << endl;
+
+    indent(out) << "private var _"
+                << (*m_iter)->get_name() + ":" + type_name((*m_iter)->get_type());
+
+    if (type_is_numeric((*m_iter)->get_type()) && !is_result) {
+      out << " = 0";
+    }
+
+    out << ";" << endl;
 
     indent(out) << "public static const " << upcase_string((*m_iter)->get_name())
                 << ":int = " << (*m_iter)->get_key() << ";" << endl;
@@ -752,6 +780,9 @@ void t_as3_generator::generate_as3_struct_definition(ofstream& out,
   // Default constructor
   indent(out) << "public function " << tstruct->get_name() << "() {" << endl;
   indent_up();
+  if (is_exception) {
+    indent(out) << "this.name=\"" << tstruct->get_name() << "\";" << endl;
+  }
   for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
     if ((*m_iter)->get_value() != NULL) {
       indent(out) << "this._" << (*m_iter)->get_name() << " = "
@@ -1491,8 +1522,8 @@ void t_as3_generator::generate_service(t_service* tservice) {
   scope_up(f_service_);
 
   f_service_ << endl << as3_type_imports() << as3_thrift_imports()
-             << as3_thrift_gen_imports(tservice) << endl;
-
+             << as3_thrift_gen_imports(tservice)
+             << as3_thrift_gen_extends_imports(tservice, "Processor") << endl;
   generate_service_server(tservice);
   scope_down(f_service_);
 
@@ -1597,8 +1628,7 @@ void t_as3_generator::generate_service_client(t_service* tservice) {
 
   if (extends.empty()) {
     f_service_ << indent() << "protected var iprot_:TProtocol;" << endl << indent()
-               << "protected var oprot_:TProtocol;" << endl << endl << indent()
-               << "protected var seqid_:int;" << endl << endl;
+               << "protected var oprot_:TProtocol;" << endl << endl;
 
     indent(f_service_) << "public function getInputProtocol():TProtocol" << endl;
     scope_up(f_service_);
@@ -1641,10 +1671,11 @@ void t_as3_generator::generate_service_client(t_service* tservice) {
     const vector<t_field*>& fields = arg_struct->get_members();
 
     // Serialize the request
-    f_service_ << indent() << "oprot_.writeMessageBegin(new TMessage(\"" << funname << "\", "
+    f_service_ << indent() << "oprot_.writeMessageBegin(new TMessage(\"" << service_name_ << ":"
+               << funname << "\", "
                << ((*f_iter)->is_oneway() ? "TMessageType.ONEWAY" : "TMessageType.CALL")
-               << ", seqid_));" << endl << indent() << "var args:" << argsname << " = new "
-               << argsname << "();" << endl;
+               << ", ++StaticSeq.seqId));" << endl << indent() << "var args:" << argsname
+               << " = new " << argsname << "();" << endl;
 
     for (fld_iter = fields.begin(); fld_iter != fields.end(); ++fld_iter) {
       f_service_ << indent() << "args." << (*fld_iter)->get_name() << " = "
@@ -1655,17 +1686,21 @@ void t_as3_generator::generate_service_client(t_service* tservice) {
                << "oprot_.writeMessageEnd();" << endl;
 
     if ((*f_iter)->is_oneway()) {
-      f_service_ << indent() << "oprot_.getTransport().flush();" << endl;
+      f_service_ << indent() << "oprot_.getTransport().flush(StaticSeq.seqId);" << endl;
     } else {
-      f_service_ << indent() << "oprot_.getTransport().flush(function(error:Error):void {" << endl;
+      f_service_ << indent()
+                 << "oprot_.getTransport().flush(StaticSeq.seqId, function(error:Error):void {"
+                 << endl;
       indent_up();
       f_service_ << indent() << "try {" << endl;
       indent_up();
       string resultname = (*f_iter)->get_name() + "_result";
       f_service_ << indent() << "if (error != null) {" << endl << indent()
                  << "  if (onError != null) onError(error);" << endl << indent() << "  return;"
-                 << endl << indent() << "}" << endl << indent()
-                 << "var msg:TMessage = iprot_.readMessageBegin();" << endl << indent()
+                 << endl << indent() << "}" << endl << indent() << "if (onError == null) {" << endl
+                 << indent() << "  onError = function(e:Error):void {" << endl << indent()
+                 << "     throw e;" << endl << indent() << "  };" << endl << indent() << "}"
+                 << indent() << "var msg:TMessage = iprot_.readMessageBegin();" << endl << indent()
                  << "if (msg.type == TMessageType.EXCEPTION) {" << endl << indent()
                  << "  var x:TApplicationError = TApplicationError.read(iprot_);" << endl
                  << indent() << "  iprot_.readMessageEnd();" << endl << indent()
@@ -1786,7 +1821,7 @@ void t_as3_generator::generate_service_server(t_service* tservice) {
          "\"Invalid method name: '\"+msg.name+\"'\");" << endl << indent()
       << "  oprot.writeMessageBegin(new TMessage(msg.name, TMessageType.EXCEPTION, msg.seqid));"
       << endl << indent() << "  x.write(oprot);" << endl << indent() << "  oprot.writeMessageEnd();"
-      << endl << indent() << "  oprot.getTransport().flush();" << endl << indent()
+      << endl << indent() << "  oprot.getTransport().flush(msg.seqid);" << endl << indent()
       << "  return true;" << endl << indent() << "}" << endl << indent()
       << "fn.call(this,msg.seqid, iprot, oprot);" << endl;
 
@@ -1924,7 +1959,7 @@ void t_as3_generator::generate_process_function(t_service* tservice, t_function*
                << "oprot.writeMessageBegin(new TMessage(\"" << tfunction->get_name()
                << "\", TMessageType.EXCEPTION, seqid));" << endl << indent() << "x.write(oprot);"
                << endl << indent() << "oprot.writeMessageEnd();" << endl << indent()
-               << "oprot.getTransport().flush();" << endl << indent() << "return;" << endl;
+               << "oprot.getTransport().flush(seqid);" << endl << indent() << "return;" << endl;
     indent_down();
     f_service_ << indent() << "}" << endl;
   }
@@ -1943,7 +1978,7 @@ void t_as3_generator::generate_process_function(t_service* tservice, t_function*
   f_service_ << indent() << "oprot.writeMessageBegin(new TMessage(\"" << tfunction->get_name()
              << "\", TMessageType.REPLY, seqid));" << endl << indent() << "result.write(oprot);"
              << endl << indent() << "oprot.writeMessageEnd();" << endl << indent()
-             << "oprot.getTransport().flush();" << endl;
+             << "oprot.getTransport().flush(seqid);" << endl;
 
   // Close function
   scope_down(f_service_);
@@ -2438,7 +2473,7 @@ string t_as3_generator::function_signature(t_function* tfunction, string prefix)
     if (arguments != "") {
       arguments += ", ";
     }
-    arguments += "onError:Function, onSuccess:Function";
+    arguments += "onSuccess:Function, onError:Function = null";
   }
 
   std::string result = "function " + prefix + tfunction->get_name() + "(" + arguments + "):void";

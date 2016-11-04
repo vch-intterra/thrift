@@ -228,7 +228,7 @@ package org.apache.thrift.transport
             this.eventDispatcher.dispatchEvent(event);
         }
 
-        public override function flush(callback:Function = null):void
+        public override function flush(seqid:int, callback:Function = null):void
         {
             trace("set callback:" + callback);
             this.ioCallback = callback;

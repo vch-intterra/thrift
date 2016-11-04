@@ -20,7 +20,9 @@
 package org.apache.thrift.transport;
 
 import org.apache.thrift.TByteArrayOutputStream;
+
 import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
 
 /**
  * Memory buffer-based implementation of the TTransport interface.
@@ -97,6 +99,22 @@ public class TMemoryBuffer extends TTransport {
 
   public byte[] getArray() {
     return arr_.get();
+  }
+  
+  public ByteBuffer getByteBuffer(){
+	  return ByteBuffer.wrap(arr_.get(), 0, arr_.size());	  
+  }
+  
+  /**
+   * Creates a newly allocated byte array. Its size is the current
+   * size of this output stream and the valid contents of the buffer
+   * have been copied into it.
+   *
+   * @return  the current contents of this output stream, as a byte array.
+   * @see     java.io.ByteArrayOutputStream#size()
+   */
+  public byte[] toByteArray(){
+	  return arr_.toByteArray();
   }
 }
 

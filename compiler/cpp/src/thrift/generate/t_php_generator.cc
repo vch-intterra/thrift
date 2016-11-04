@@ -1335,8 +1335,9 @@ void t_php_generator::generate_service_processor(t_service* tservice) {
   }
 
   // HOT: check for method implementation
-  f_service_processor << indent() << "$methodname = 'process_'.$fname;" << endl
-                      << indent() << "if (!method_exists($this, $methodname)) {" << endl;
+  f_service_processor  << indent() << "$fname = substr($fname, strpos($fname, ':')+1);" << endl
+                       << indent() << "$methodname = 'process_'.$fname;" << endl
+                       << indent() << "if (!method_exists($this, $methodname)) {" << endl;
 
   indent_up();
   if (binary_inline_) {
@@ -1844,12 +1845,12 @@ void t_php_generator::generate_service_client(t_service* tservice) {
     // Serialize the request header
     if (binary_inline_) {
       f_service_client << indent() << "$buff = pack('N', (0x80010000 | " << messageType << "));" << endl
-                       << indent() << "$buff .= pack('N', strlen('" << funname << "'));" << endl
-                       << indent() << "$buff .= '" << funname << "';" << endl << indent()
-                       << "$buff .= pack('N', $this->seqid_);" << endl;
+                 << indent() << "$buff .= pack('N', strlen('" << service_name_ << ":" << funname
+                 << "'));" << endl << indent() << "$buff .= '" << funname << "';" << endl
+                 << indent() << "$buff .= pack('N', $this->seqid_);" << endl;
     } else {
-      f_service_client << indent() << "$this->output_->writeMessageBegin('" << (*f_iter)->get_name()
-                       << "', " << messageType << ", $this->seqid_);" << endl;
+      f_service_client << indent() << "$this->output_->writeMessageBegin('" << service_name_ << ":"
+                 << (*f_iter)->get_name() << "', " << messageType << ", $this->seqid_);" << endl;
     }
 
     // Write to the stream
