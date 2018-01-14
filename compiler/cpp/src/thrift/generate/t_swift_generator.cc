@@ -235,14 +235,7 @@ private:
   }
 
   bool field_is_optional(t_field* tfield) {
-    bool opt = tfield->get_req() == t_field::T_OPTIONAL;
-    if (tfield->annotations_.find("swift.nullable") != tfield->annotations_.end() && tfield->get_req() != t_field::T_REQUIRED) {
-      opt = true;
-    }
-    if (gen_cocoa_) { // Backwards compatibility, only if its actually "optional"
-      opt = tfield->get_req() == t_field::T_OPTIONAL;
-    }
-    return opt;
+    return tfield->get_req() != t_field::T_REQUIRED;
   }
 
   bool struct_has_required_fields(t_struct* tstruct) {
@@ -1829,7 +1822,7 @@ void t_swift_generator::generate_swift_service_client_send_function_implementati
   block_open(out);
   if (!gen_cocoa_) {
     // Serialize the request
-    indent(out) << "try outProtocol.writeMessageBegin(name: \"" << funname << "\", "
+    indent(out) << "try outProtocol.writeMessageBegin(name: \"" << tservice->get_name() << ":" << funname << "\", "
                 << "type: " << (tfunction->is_oneway() ? ".oneway" : ".call") << ", "
                 << "sequenceID: 0)" << endl;
 
@@ -1854,7 +1847,7 @@ void t_swift_generator::generate_swift_service_client_send_function_implementati
     out << endl;
 
     // Serialize the request
-    indent(out) << "try __outProtocol.writeMessageBeginWithName(\"" << funname << "\", "
+    indent(out) << "try __outProtocol.writeMessageBeginWithName(\"" << tservice->get_name() << ":" << funname << "\", "
                 << "type: " << (tfunction->is_oneway() ? ".ONEWAY" : ".CALL") << ", "
                 << "sequenceID: 0)" << endl;
 
@@ -2423,7 +2416,7 @@ void t_swift_generator::generate_swift_service_server_implementation(ofstream& o
         out << endl;
 
         if (!tfunction->is_oneway()) {
-          out << indent() << "try outProtocol.writeMessageBegin(name: \"" << tfunction->get_name() << "\", type: .reply, sequenceID: sequenceID)" << endl
+          out << indent() << "try outProtocol.writeMessageBegin(name: \"" << tservice->get_name() << ":" << tfunction->get_name() << "\", type: .reply, sequenceID: sequenceID)" << endl
               << indent() << "try result.write(to: outProtocol)" << endl
               << indent() << "try outProtocol.writeMessageEnd()" << endl;
         }
@@ -2443,7 +2436,7 @@ void t_swift_generator::generate_swift_service_server_implementation(ofstream& o
         out << endl;
 
         if (!tfunction->is_oneway()) {
-          out << indent() << "try outProtocol.writeMessageBeginWithName(\"" << tfunction->get_name() << "\", type: .REPLY, sequenceID: sequenceID)" << endl
+          out << indent() << "try outProtocol.writeMessageBeginWithName(\"" << tservice->get_name() << ":" << tfunction->get_name() << "\", type: .REPLY, sequenceID: sequenceID)" << endl
               << indent() << "try " << result_type << ".writeValue(result, toProtocol: outProtocol)" << endl
               << indent() << "try outProtocol.writeMessageEnd()" << endl;
         }
