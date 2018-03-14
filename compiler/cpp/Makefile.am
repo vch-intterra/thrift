@@ -95,6 +95,7 @@ thrift_SOURCES += src/thrift/generate/t_c_glib_generator.cc \
                   src/thrift/generate/t_php_generator.cc \
                   src/thrift/generate/t_erl_generator.cc \
                   src/thrift/generate/t_cocoa_generator.cc \
+                  src/thrift/generate/t_cocoarealm_generator.cc \
                   src/thrift/generate/t_swift_generator.cc \
                   src/thrift/generate/t_st_generator.cc \
                   src/thrift/generate/t_ocaml_generator.cc \
