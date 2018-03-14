@@ -527,7 +527,7 @@ void t_cocoarealm_generator::generate_cocoa_struct_interface(ofstream& out,
   }
   // out << "<TBase, NSCoding> ";
   out << "<TBase> ";
-
+  out << endl;
   scope_up(out);
 
   // members are protected.  this is redundant, but explicit.
@@ -1502,7 +1502,7 @@ void t_cocoarealm_generator::generate_cocoa_service_async_protocol(ofstream& out
 void t_cocoarealm_generator::generate_cocoa_service_client_interface(ofstream& out,
                                                                 t_service* tservice) {
   out << "@interface " << cocoa_prefix_ << tservice->get_name() << "Client : TBaseClient <"
-      << cocoa_prefix_ << tservice->get_name() << "> ";
+      << cocoa_prefix_ << tservice->get_name() << "> " << endl;
 
   out << "- (id) initWithProtocol: (id <TProtocol>) protocol;" << endl;
   out << "- (id) initWithInProtocol: (id <TProtocol>) inProtocol outProtocol: (id <TProtocol>) "
