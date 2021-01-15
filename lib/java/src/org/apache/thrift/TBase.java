@@ -21,25 +21,23 @@ package org.apache.thrift;
 
 import java.io.Serializable;
 
-import org.apache.thrift.protocol.TProtocol;
-
 /**
  * Generic base interface for generated Thrift objects.
  *
  */
-public interface TBase<T extends TBase<T,F>, F extends TFieldIdEnum> extends Comparable<T>,  TSerializable, Serializable {
+public interface TBase extends TSerializable, Serializable {
 
   /**
    * Get the F instance that corresponds to fieldId.
    */
-  public F fieldForId(int fieldId);
+  public TFieldIdEnum fieldForId(int fieldId);
 
   /**
    * Check if a field is currently set or unset.
    *
    * @param field
    */
-  public boolean isSet(F field);
+  public boolean isSet(TFieldIdEnum field);
 
   /**
    * Get a field's value by field variable. Primitive types will be wrapped in
@@ -47,7 +45,7 @@ public interface TBase<T extends TBase<T,F>, F extends TFieldIdEnum> extends Com
    *
    * @param field
    */
-  public Object getFieldValue(F field);
+  public Object getFieldValue(TFieldIdEnum field);
 
   /**
    * Set a field's value by field variable. Primitive types must be "boxed" in
@@ -55,25 +53,25 @@ public interface TBase<T extends TBase<T,F>, F extends TFieldIdEnum> extends Com
    *
    * @param field
    */
-  public void setFieldValue(F field, Object value);
+  public void setFieldValue(TFieldIdEnum field, Object value);
 
   /**
    * Create new object and copy fields from this
    * @return
    */
-  public T deepCopy();
-  
+  public TBase deepCopy();
+
   /**
    * Copy fields from 'from' to this
    * @param other
    */
-  public void deepCopyFields(T from);
-  
+  public void deepCopyFields(TBase from);
+
   /**
    * Create new object of type T with default constructor
    * @return
    */
-  public T newInstance();
+  public TBase newInstance();
 
   /**
    * Return to the state of having just been initialized, as though you had just

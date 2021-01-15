@@ -34,7 +34,7 @@ import org.apache.thrift.scheme.SchemeFactory;
 import org.apache.thrift.scheme.StandardScheme;
 import org.apache.thrift.scheme.TupleScheme;
 
-public abstract class TUnion<T extends TUnion<T,F>, F extends TFieldIdEnum> implements TBase<T, F> {
+public abstract class TUnion<T extends TUnion<T,F>, F extends TFieldIdEnum> implements TBase {
 
   protected Object value_;
   protected F setField_;
@@ -43,7 +43,7 @@ public abstract class TUnion<T extends TUnion<T,F>, F extends TFieldIdEnum> impl
     setField_ = null;
     value_ = null;
   }
-  
+
   private static final Map<Class<? extends IScheme>, SchemeFactory> schemes = new HashMap<Class<? extends IScheme>, SchemeFactory>();
   static {
     schemes.put(StandardScheme.class, new TUnionStandardSchemeFactory());
@@ -110,7 +110,7 @@ public abstract class TUnion<T extends TUnion<T,F>, F extends TFieldIdEnum> impl
     return value_;
   }
 
-  public Object getFieldValue(F fieldId) {
+  public Object getFieldValue(TFieldIdEnum fieldId) {
     if (fieldId != setField_) {
       throw new IllegalArgumentException("Cannot get the value of field " + fieldId + " because union's set field is " + setField_);
     }
@@ -126,7 +126,7 @@ public abstract class TUnion<T extends TUnion<T,F>, F extends TFieldIdEnum> impl
     return setField_ != null;
   }
 
-  public boolean isSet(F fieldId) {
+  public boolean isSet(TFieldIdEnum fieldId) {
     return setField_ == fieldId;
   }
 
@@ -138,9 +138,9 @@ public abstract class TUnion<T extends TUnion<T,F>, F extends TFieldIdEnum> impl
     schemes.get(iprot.getScheme()).getScheme().read(iprot, this);
   }
 
-  public void setFieldValue(F fieldId, Object value) {
-    checkType(fieldId, value);
-    setField_ = fieldId;
+  public void setFieldValue(TFieldIdEnum fieldId, Object value) {
+    checkType((F) fieldId, value);
+    setField_ = (F)fieldId;
     value_ = value;
   }
 
@@ -153,7 +153,7 @@ public abstract class TUnion<T extends TUnion<T,F>, F extends TFieldIdEnum> impl
   }
 
   /**
-   * Implementation should be generated so that we can efficiently type check 
+   * Implementation should be generated so that we can efficiently type check
    * various values.
    * @param setField
    * @param value
@@ -161,14 +161,14 @@ public abstract class TUnion<T extends TUnion<T,F>, F extends TFieldIdEnum> impl
   protected abstract void checkType(F setField, Object value) throws ClassCastException;
 
   /**
-   * Implementation should be generated to read the right stuff from the wire 
-   * based on the field header. 
+   * Implementation should be generated to read the right stuff from the wire
+   * based on the field header.
    * @param field
    * @return read Object based on the field header, as specified by the argument.
    */
   protected abstract Object standardSchemeReadValue(TProtocol iprot, TField field) throws TException;
   protected abstract void standardSchemeWriteValue(TProtocol oprot) throws TException;
-  
+
   protected abstract Object tupleSchemeReadValue(TProtocol iprot, short fieldID) throws TException;
   protected abstract void tupleSchemeWriteValue(TProtocol oprot) throws TException;
 
@@ -203,13 +203,13 @@ public abstract class TUnion<T extends TUnion<T,F>, F extends TFieldIdEnum> impl
     this.setField_ = null;
     this.value_ = null;
   }
-  
+
   private static class TUnionStandardSchemeFactory implements SchemeFactory {
     public TUnionStandardScheme getScheme() {
       return new TUnionStandardScheme();
     }
   }
-  
+
   private static class TUnionStandardScheme extends StandardScheme<TUnion> {
 
     @Override
@@ -247,13 +247,13 @@ public abstract class TUnion<T extends TUnion<T,F>, F extends TFieldIdEnum> impl
       oprot.writeStructEnd();
     }
   }
-  
+
   private static class TUnionTupleSchemeFactory implements SchemeFactory {
     public TUnionTupleScheme getScheme() {
       return new TUnionTupleScheme();
     }
   }
-  
+
   private static class TUnionTupleScheme extends TupleScheme<TUnion> {
 
     @Override
