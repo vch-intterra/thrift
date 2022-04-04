@@ -5,7 +5,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>org.apache</groupId>
 	<artifactId>thrift</artifactId>
-	<version>15.01.21</version>
+	<version>04.04.22-intterra</version>
 	<properties>
 		<github.global.server>github</github.global.server>
 	</properties>
@@ -104,14 +104,6 @@
 			<artifactId>httpcore</artifactId>
 			<version>4.2.4</version>
 		</dependency>
-		
-		<!-- https://mvnrepository.com/artifact/javax.persistence/javax.persistence-api -->
-		<dependency>
-		    <groupId>javax.persistence</groupId>
-		    <artifactId>javax.persistence-api</artifactId>
-		    <version>2.2</version>
-		</dependency>
-
 	</dependencies>
 
 	<distributionManagement>

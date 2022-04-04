@@ -63,7 +63,7 @@ public interface TBase extends TSerializable, Serializable {
 
   /**
    * Copy fields from 'from' to this
-   * @param other
+   * @param from
    */
   public void deepCopyFields(TBase from);
 

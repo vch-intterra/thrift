@@ -170,7 +170,6 @@ public:
    */
 
   void generate_java_struct(t_struct* tstruct, bool is_exception);
-  void generate_jpa_struct(t_struct* tstruct);
 
   void generate_java_struct_definition(std::ostream& out,
                                        t_struct* tstruct,
@@ -870,7 +869,6 @@ void t_java_generator::generate_struct(t_struct* tstruct) {
     generate_java_union(tstruct);
   } else {
     generate_java_struct(tstruct, false);
-    generate_jpa_struct(tstruct);
   }
 }
 
@@ -5829,32 +5827,6 @@ string t_java_generator::kotlin_argument_list(t_struct* tstruct, bool include_ty
   }
   return result;
 }
-
-void t_java_generator::generate_jpa_struct(t_struct* tstruct) {
-  string f_struct_name = package_dir_ + "/" + make_valid_java_filename(tstruct->get_name()) + "Ext.kt";
-
-  ofstream_with_content_based_conditional_update f_struct;
-  f_struct.open(f_struct_name.c_str());
-
-  f_struct << java_package();
-  f_struct << "import javax.persistence.criteria.Path" << endl;
-  f_struct << "import javax.persistence.criteria.Root" << endl;
-
-  const vector<t_field*>& fields = tstruct->get_members();
-  vector<t_field*>::const_iterator f_iter;
-  for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
-    t_field* field = *f_iter;
-    std::string type = type_name_kotlin(field->get_type());
-    std::string constant = constant_name(field->get_name());
-
-    //val Root<out User>.PHONE: Path<String> get() =  this.get<String>(User._Fields.PHONE.fieldName)
-    f_struct << "val Root<out " << tstruct->get_name() << ">." << constant << ": Path<" << type << "> get() = this.get<" << type << ">(";
-    f_struct << tstruct->get_name() << "._Fields." << constant << ".fieldName)" << endl;
-  }
-
-  f_struct.close();
-}
-
 
 THRIFT_REGISTER_GENERATOR(
     java,

@@ -188,6 +188,19 @@ thrift_ssl_socket_is_open (ThriftTransport *transport);
 gboolean
 thrift_ssl_socket_open (ThriftTransport *transport, GError **error);
 
+// https://trac.macports.org/ticket/61252
+/**
+ * Close connection if required
+ * @param transport
+ * @param error
+ * @return true if operation was correct
+ */
+gboolean
+thrift_ssl_socket_close (ThriftTransport *transport, GError **error);
+
+// https://trac.macports.org/ticket/61252
+gboolean
+thrift_ssl_socket_authorize(ThriftTransport * transport, GError **error);
 
 /**
  * @brief Initialization function
